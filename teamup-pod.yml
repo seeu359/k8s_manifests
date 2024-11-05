@@ -1,0 +1,52 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend
+spec:
+  containers:
+    - image: seeu359/teamup:1.2
+      name: backend
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: DEBUG
+          value: "True"
+        - name: ALLOWED_HOSTS
+          value: 127.0.0.1,localhost,158.255.6.201
+        - name: POSTGRES_URL 
+          valueFrom:
+            secretKeyRef:
+              name: appenvs
+              key: postgres_url
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: appenvs
+              key: django_secret_key
+      ports:
+        - name: backend
+          containerPort: 8000
+      livenessProbe:
+        # проверка живучести выполнит запрос HTTP GET
+        httpGet:
+          # путь к запросу в HTTP-запросе
+          path: /api/v1/healthcheck
+          # порт, к которому должна подключиться проверка
+          port: 8000
+        # перед исполнением первой проверки подождать 15 секунд, пока стартанёт бэкенд
+        initialDelaySeconds: 15
+        # период выполнения проверки
+        periodSeconds: 30
+        # максимальное время выполнения проверки (по умолчанию 1 раз)
+        timeoutSeconds: 2
+        # сколько раз пробовать попытку, если она провалилась (по умолчанию 1 раз)
+        failureThreshold: 6
+  # чтобы Кубер мог скачивать образы из нашего GitLab Registr
+      readinessProbe:
+            httpGet:
+              path: /api/v1/healthcheck
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 29
+  imagePullSecrets:
+    - name: docker-config-secret 
